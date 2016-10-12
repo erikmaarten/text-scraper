@@ -15,5 +15,9 @@
   "bugs": {
     "url": "https://github.com/erikmaarten/text-scraper/issues"
   },
-  "homepage": "https://github.com/erikmaarten/text-scraper#readme"
+  "homepage": "https://github.com/erikmaarten/text-scraper#readme",
+  "dependencies": {
+    "get-urls": "^5.0.1",
+    "lodash": "^4.16.4"
+  }
 }

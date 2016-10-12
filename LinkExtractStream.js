@@ -1,6 +1,10 @@
 "use strict";
+const _ = require('lodash');
+const fs = require('fs');
+const getUrls = require('get-urls');
+const Writable = require('stream').Writable;
 
-var Writable = require('stream').Writable;
+const visited = [];
 
 class LinkExtractStream extends Writable {
   constructor() {
@@ -8,7 +12,13 @@ class LinkExtractStream extends Writable {
   }
   write(chunk, encoding, cb) {
     const textChunk = chunk.toString();
-    console.log('read chunk:', textChunk);
+    const urls = getUrls(textChunk);
+    _.each(urls, url => visited.push(url));
+  }
+  end() {
+    const writeable = fs.createWriteStream('./found_links.txt');
+    writeable.write(_.uniq(visited).join('\n'));
+    console.log('ending...');
   }
 }
 

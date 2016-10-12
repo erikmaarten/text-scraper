@@ -17,7 +17,10 @@ http.get(queue.pop(), function(res) {
   res.pipe(linkExtractStream);
 }).on('error', function(e) {
   console.log('Got error:', e.message);
-});
+};
+
+// TODO: Wait for all data for a particular page to download, then send to
+// link extract stream
 
 function extractLinks(sourceText) {
   // TODO
