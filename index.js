@@ -14,10 +14,16 @@ const queue = [entryPoint];
 
 http.get(queue.pop(), function(res) {
   console.log('statusCode:', res.statusCode);
-  res.pipe(linkExtractStream);
+  const responseParts = [];
+  res.setEncoding('utf8');
+  res.on('data', (chunk) => responseParts.push(chunk));
+  res.on('end', () => {
+    linkExtractStream.write(responseParts.join(''));
+    linkExtractStream.end();
+  });
 }).on('error', function(e) {
   console.log('Got error:', e.message);
-};
+});
 
 // TODO: Wait for all data for a particular page to download, then send to
 // link extract stream

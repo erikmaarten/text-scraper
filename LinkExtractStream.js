@@ -11,11 +11,13 @@ class LinkExtractStream extends Writable {
     super();
   }
   write(chunk, encoding, cb) {
+    console.log('in write in stream');
     const textChunk = chunk.toString();
     const urls = getUrls(textChunk);
     _.each(urls, url => visited.push(url));
   }
   end() {
+    console.log('in end in stream');
     const writeable = fs.createWriteStream('./found_links.txt');
     writeable.write(_.uniq(visited).join('\n'));
     console.log('ending...');
