@@ -14,6 +14,7 @@ class LinkExtractStream extends Writable {
     console.log('in write in stream');
     const textChunk = chunk.toString();
     const urls = getUrls(textChunk);
+    console.log('found ' + urls.length + ' urls');
     _.each(urls, url => visited.push(url));
   }
   end() {
