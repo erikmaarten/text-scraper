@@ -29,19 +29,21 @@ function getProtocol(link) {
 function logIfError(err) {
   if (err) {
     console.log(err.message);
-  } else {
-    console.log('successful write');
   }
 }
 
 function Scraper() {
   this.fetchedPages = 0;
   this.failedFetches = 0;
+  this.shuttingDown = false;
+  this.asyncOps = 0;
 
   this.on('pageDownloaded', (link, page) => {
     this.fetchedPages++;
     linkDatabase.set(link, 1, logIfError);
-    getUrls(page).forEach( url => this.emit('foundLink', url));
+    if (!this.shuttingDown) {
+      getUrls(page).forEach( url => this.emit('foundLink', url));
+    }
   });
 
   this.on('foundLink', (rawLink) => {
@@ -64,11 +66,14 @@ function Scraper() {
     }
 
     const scraper = this;
-    protocol.get(link, (res) => {
+    scraper.asyncOps++;
+    protocol.get(link, function(res) {
       if (res.statusCode !== 200) {
         console.log('link get failed: ' + link + `statusCode ${res.statusCode}`);
-        this.failedFetches++;
+        scraper.failedFetches++;
         failureDatabase.set(link, res.statusCode);
+        scraper.asyncOps--;
+        scraper.shuttingDown ? scraper.attemptShutdown() : '';
       } else {
         const responseParts = [];
         res.setEncoding('utf8');
@@ -76,9 +81,12 @@ function Scraper() {
         res.on('end', () => {
           console.log('link get succeeded: ' + link);
           scraper.emit('pageDownloaded', link, responseParts.join(''));
+          scraper.asyncOps--;
+          scraper.shuttingDown ? scraper.attemptShutdown() : '';
         });
       }
     }).on('error', (e) => {
+      scraper.asyncOps--;
       this.failedFetches++;
       console.error('Got errror fetching ' + link + ':', e.message);
     });
@@ -87,6 +95,19 @@ function Scraper() {
 
 Scraper.prototype = Object.create(EventEmitter.prototype);
 
+
+Scraper.prototype.attemptShutdown = function() {
+  this.logOps();
+  if (this.asyncOps === 0) {
+    this.finish();
+  }
+};
+Scraper.prototype.logOps = function() {
+  console.log('Number of async ops remaining: ' + this.asyncOps);
+};
+Scraper.prototype.initiateShutdown = function() {
+  this.shuttingDown = true;
+};
 Scraper.prototype.alreadyTried = function(link) {
   const fetched = linkDatabase.get(link) !== null;
   if (fetched) linkDatabase.set(link, linkDatabase.get(link) + 1);

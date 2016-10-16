@@ -38,7 +38,7 @@ Database.prototype._load = function() {
           database._records[record.key] = record.value;
         }
       } catch(e) {
-        database.emit('error', 'found invalid record:', r);
+        database.emit('error', 'found invalid record:' + r);
       }
     });
   });
@@ -50,7 +50,8 @@ Database.prototype._load = function() {
 
 Database.prototype.close = function() {
   this._writeStream.end();
-}
+};
+
 Database.prototype.get = function(key) {
   return this._records[key] || null;
 };
@@ -61,9 +62,9 @@ Database.prototype.del = function(key) {
 };
 
 Database.prototype.set = function(key, value, cb) {
-  const toWrite = JSON.stringify({key: key, value: value});
+  const toWrite = JSON.stringify({key: key, value: value}) + '\n';
   this._records[key] = value;
-  this._writeStream.write(toWrite + '\n', cb);
+  this._writeStream.write(toWrite, cb);
 };
 
 module.exports = Database;
