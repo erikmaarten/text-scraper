@@ -5,6 +5,8 @@ const getUrls = require('get-urls');
 const Database = require('./db/Database');
 const Link = require('./lib/hyperlinks');
 
+//const nstore = require('nstore');
+
 const linkDatabase = new Database('./db/linkDatabase.txt');
 const failureDatabase = new Database('./db/failureDatabase.txt');
 
@@ -25,14 +27,19 @@ function getProtocol(link) {
 }
 
 function logIfError(err) {
-  if (err) console.log(err.message);
+  if (err) {
+    console.log(err.message);
+  } else {
+    console.log('successful write');
+  }
 }
 
 function Scraper() {
   this.fetchedPages = 0;
+  this.failedFetches = 0;
 
   this.on('pageDownloaded', (link, page) => {
-    console.log('fetched pages: ' + this.fetchedPages++);
+    this.fetchedPages++;
     linkDatabase.set(link, 1, logIfError);
     getUrls(page).forEach( url => this.emit('foundLink', url));
   });
@@ -40,14 +47,15 @@ function Scraper() {
   this.on('foundLink', (rawLink) => {
     const link = Link.removeParams(rawLink);
     if (Link.maybeHtml(link) === false) {
+      console.log('not html, returning', link);
       return;
     }
 
-    const linkRecord = linkDatabase.get(link);
-    if (linkRecord !== null) {
-      linkDatabase.set(link, linkRecord + 1, logIfError);
+    if (this.alreadyTried(link)) {
       return;
     }
+
+    console.log('probably html', link);
 
     const protocol = getProtocol(link);
     if (!protocol) {
@@ -55,28 +63,48 @@ function Scraper() {
       return;
     }
 
-    console.log('found link: ' + link);
     const scraper = this;
     protocol.get(link, (res) => {
       if (res.statusCode !== 200) {
+        console.log('link get failed: ' + link + `statusCode ${res.statusCode}`);
+        this.failedFetches++;
         failureDatabase.set(link, res.statusCode);
       } else {
         const responseParts = [];
         res.setEncoding('utf8');
         res.on('data', (chunk) => responseParts.push(chunk));
         res.on('end', () => {
+          console.log('link get succeeded: ' + link);
           scraper.emit('pageDownloaded', link, responseParts.join(''));
         });
       }
     }).on('error', (e) => {
+      this.failedFetches++;
       console.error('Got errror fetching ' + link + ':', e.message);
     });
   });
 }
 
 Scraper.prototype = Object.create(EventEmitter.prototype);
+
+Scraper.prototype.alreadyTried = function(link) {
+  const fetched = linkDatabase.get(link) !== null;
+  if (fetched) linkDatabase.set(link, linkDatabase.get(link) + 1);
+  const failed = failureDatabase.get(link) !== null;
+  if (failed) failureDatabase.set(link, failureDatabase.get(link) + 1);
+  return fetched || failed;
+};
+
 Scraper.prototype.scrape = function(link) {
-  this.emit('foundLink', link);
+  linkDatabase.on('load', () => {
+    this.emit('foundLink', link);
+  });
+};
+
+Scraper.prototype.finish = function() {
+  linkDatabase.close();
+  console.log('documents fetched:', this.fetchedPages);
+  console.log('failures:', this.failedFetches);
 };
 
 const scraper = new Scraper();

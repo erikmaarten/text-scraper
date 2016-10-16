@@ -48,6 +48,9 @@ Database.prototype._load = function() {
   });
 };
 
+Database.prototype.close = function() {
+  this._writeStream.end();
+}
 Database.prototype.get = function(key) {
   return this._records[key] || null;
 };

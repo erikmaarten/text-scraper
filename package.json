@@ -21,6 +21,7 @@
     "lodash": "^4.16.4"
   },
   "devDependencies": {
-    "eslint": "^3.8.0"
+    "eslint": "^3.8.0",
+    "nstore": "^0.5.2"
   }
 }
