@@ -1,2 +1,2 @@
 # text-scraper
-Text-scraper är ett litet program som hämtar webbsidor och samlar text.
+Text-scraper är ett litet experimentellt program som hämtar webbsidor och samlar text.
